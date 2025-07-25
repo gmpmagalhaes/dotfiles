@@ -7,7 +7,7 @@
   vars:
     packages:
       Debian: ['ca-certificates', 'curl', 'fzf', 'gcc', 'git', 'gnupg', 'htop', 'ripgrep', 'tmux', 'unzip', 'vim', 'zsh']
-      Suse:   ['ca-certificates', 'curl', 'gcc', 'git-core', 'gnupg2', 'htop', 'ripgrep', 'tmux', 'unzip', 'vim', 'zsh']
+      Suse:   ['ca-certificates', 'curl', 'gcc', 'git-core', 'gnupg', 'htop', 'ripgrep', 'tmux', 'unzip', 'vim', 'zsh']
 
   tasks:
 
@@ -19,11 +19,6 @@
       apt:
         update_cache: yes
       when: ansible_os_family == 'Debian'
-  
-    - name: Update zypper cache
-      zypper:
-        update_cache: yes
-      when: ansible_os_family == 'Suse'
 
     - name: Install packages
       package:
@@ -112,20 +107,12 @@
         update_cache: yes
       when: ansible_os_family == "Debian"
 
-    - name: Add Docker repo (openSUSE)
-      zypper_repository:
-        name: docker
-        repo: https://download.docker.com/linux/sles/docker-ce.repo
-        auto_import_keys: yes
-        state: present
-      when: ansible_os_family == "Suse"
-
     - name: Install Docker Engine (openSUSE)
       zypper:
         name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
+          - docker
+          - docker-compose
+          - docker-buildx
         state: present
       when: ansible_os_family == "Suse"
 
@@ -157,8 +144,54 @@
     - name: Download Jetbrains mono
       when: jetbrains_mono_exists is failed
       ansible.builtin.unarchive:
-        src: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/JetBrainsMono.zip
+        src: https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz
         dest: "~{{ remote_regular_user }}/.fonts/"
         remote_src: true
         mode: "0755"
         owner: "{{ remote_regular_user }}"
+
+    - name: Check if proto is installed
+      ansible.builtin.command: which proto
+      register: check_proto_exists
+      changed_when: false
+      failed_when: false
+
+
+    - name: Install proto
+      ansible.builtin.shell: "curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- --yes"
+      args:
+        executable: /bin/bash
+      when: check_proto_exists.rc != 0
+
+    - name: Install Node.js using proto CLI
+      ansible.builtin.shell: "proto install node -- --lts"
+      environment:
+        PATH: "{{ ansible_env.HOME }}/.proto/bin:{{ ansible_env.PATH }}"
+
+    - name: Install pnpm using proto CLI
+      ansible.builtin.shell: "proto install pnpm -- --lts"
+      environment:
+        PATH: "{{ ansible_env.HOME }}/.proto/bin:{{ ansible_env.PATH }}"
+
+    - name: Add Microsoft repository for VS Code
+      zypper_repository:
+        name: microsoft-vscode
+        description: Microsoft Visual Studio Code
+        repo: https://packages.microsoft.com/yumrepos/vscode
+        autorefresh: yes
+        enabled: yes
+        disable_gpg_check: no
+        auto_import_keys: yes
+
+    - name: Refresh zypper repositories
+      ansible.builtin.shell: "zypper refresh"
+
+    - name: Install Visual Studio Code
+      zypper:
+        name: code
+        state: present
+
+    - name: Install neovim
+      zypper:
+          name: neovim
+          state: present

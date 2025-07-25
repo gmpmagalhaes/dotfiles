@@ -3,7 +3,7 @@
 
 if ! command -v ansible >/dev/null 2>&1; then
 	echo "Installing Ansible..."
-	sudo apt install -y ansible
+	sudo zypper in -y ansible
 fi
 
 ansible-playbook ~/.bootstrap/setup.yml --ask-become-pass

@@ -22,11 +22,9 @@ error() {
 
 info "Running dotfiles installation script..."
 
-sudo apt update
-
 if ! command -v git >/dev/null 2>&1; then
 	info "Installing git..."
-	sudo apt install -y --no-install-recommends git
+	sudo zypper int git
 fi
 
 if ! chezmoi="$(command -v chezmoi)"; then
